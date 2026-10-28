@@ -1,33 +1,32 @@
-#!/usr/bin/env Rscript
 
 suppressPackageStartupMessages({
   library(tidyverse)
 })
 
 # ============================================================
-# DIVERSITE NUCLEOTIDIQUE INDIVIDUELLE PAR POPULATION
+# INDIVIDUAL NUCLEOTIDE DIVERSITY BY POPULATION
 #
-# Pour chaque individu :
-#   Calcul de sa divergence nucleotidique moyenne par rapport
-#   aux autres individus de sa population, sur les SNP communs.
+# For each individual:
+#   Calculate its mean nucleotide divergence from the other
+#   individuals in its population, using the common SNPs.
 #
-# Figures :
-#   Boxplot par population, mediane indiquee par la ligne
-#   centrale de chaque boite.
+# Figures:
+#   Boxplot by population, with the median shown by the
+#   central line of each box.
 #
-# Ordre :
-#   Native, triees par mediane croissante,
-#   puis Invasive, triees par mediane croissante.
+# Ordering:
+#   Native populations, sorted by increasing median,
+#   followed by Invasive populations, sorted by increasing median.
 #
-# Attention :
-#   Cette mesure individuelle est une divergence moyenne
-#   par rapport aux autres membres de la population.
-#   Ce n'est pas le pi classique de population.
+# Note:
+#   This individual-level measure represents mean divergence
+#   from other members of the same population.
+#   It is not the conventional population-level pi.
 # ============================================================
 
 
 # ------------------------------------------------------------
-# 1. Fichiers d'entree
+# 1. Input files
 # ------------------------------------------------------------
 
 base_dir <- "06_results/nucleotide_diversity_Pi/common_SNPs"
@@ -51,7 +50,7 @@ population_pi_file <- file.path(
 
 
 # ------------------------------------------------------------
-# 2. Fichiers de sortie
+# 2. Output files
 # ------------------------------------------------------------
 
 individual_file <- file.path(
@@ -76,7 +75,7 @@ plot_pdf <- file.path(
 
 
 # ------------------------------------------------------------
-# 3. Verifier les fichiers
+# 3. Check input files
 # ------------------------------------------------------------
 
 input_files <- c(
@@ -90,14 +89,14 @@ missing_files <- input_files[!file.exists(input_files)]
 
 if (length(missing_files) > 0) {
   stop(
-    "Fichiers introuvables :\n",
+    "Input files not found:\n",
     paste(missing_files, collapse = "\n")
   )
 }
 
 
 # ------------------------------------------------------------
-# 4. Lire la liste des SNP communs
+# 4. Read the list of common SNPs
 # ------------------------------------------------------------
 
 common_table <- read_tsv(
@@ -107,10 +106,10 @@ common_table <- read_tsv(
 )
 
 if (ncol(common_table) == 0) {
-  stop("Le fichier de SNP communs est vide.")
+  stop("The common SNP file is empty.")
 }
 
-# Chercher une colonne d'identifiants connue.
+# Look for a recognized SNP identifier column.
 candidate_cols <- which(
   tolower(names(common_table)) %in%
     c("snp_id", "id", "snp", "locus")
@@ -121,7 +120,7 @@ if (length(candidate_cols) > 0) {
 } else {
   id_col <- names(common_table)[1]
   warning(
-    "Aucune colonne SNP_ID/ID reconnue ; utilisation de ",
+    "No recognized SNP_ID/ID column found; using ",
     id_col
   )
 }
@@ -137,18 +136,18 @@ common_ids <- common_ids[
 ]
 
 if (length(common_ids) == 0) {
-  stop("Aucun identifiant SNP utilisable.")
+  stop("No usable SNP identifiers were found.")
 }
 
 cat("\n========================================\n")
-cat("SNP COMMUNS\n")
+cat("COMMON SNPs\n")
 cat("========================================\n")
-cat("Colonne des identifiants :", id_col, "\n")
-cat("Nombre de SNP communs :", length(common_ids), "\n")
+cat("Identifier column:", id_col, "\n")
+cat("Number of common SNPs:", length(common_ids), "\n")
 
 
 # ------------------------------------------------------------
-# 5. Lire les metadonnees des individus
+# 5. Read individual metadata
 # ------------------------------------------------------------
 
 metadata <- read_tsv(
@@ -159,8 +158,8 @@ metadata <- read_tsv(
 
 if (!all(c("Sample", "Pop") %in% names(metadata))) {
   stop(
-    "Le fichier de metadonnees doit contenir Sample et Pop. ",
-    "Colonnes trouvees : ",
+    "The metadata file must contain Sample and Pop. ",
+    "Columns found: ",
     paste(names(metadata), collapse = ", ")
   )
 }
@@ -178,12 +177,12 @@ metadata <- metadata %>%
   )
 
 if (anyDuplicated(metadata$Sample)) {
-  stop("Des individus apparaissent plusieurs fois dans les metadonnees.")
+  stop("Some individuals appear more than once in the metadata.")
 }
 
 
 # ------------------------------------------------------------
-# 6. Lire l'origine des populations
+# 6. Read population origins
 # ------------------------------------------------------------
 
 population_summary <- read_tsv(
@@ -193,8 +192,8 @@ population_summary <- read_tsv(
 
 if (!all(c("Population", "Origin") %in% names(population_summary))) {
   stop(
-    "Le tableau de Pi par population doit contenir ",
-    "les colonnes Population et Origin."
+    "The population-level Pi table must contain ",
+    "the Population and Origin columns."
   )
 }
 
@@ -219,7 +218,7 @@ origin_lookup <- setNames(
 
 
 # ------------------------------------------------------------
-# 7. Lire l'en-tete du VCF
+# 7. Read the VCF header
 # ------------------------------------------------------------
 
 con <- gzfile(vcf_file, open = "rt")
@@ -242,7 +241,7 @@ repeat {
 close(con)
 
 if (is.null(vcf_header_line)) {
-  stop("Impossible de trouver la ligne d'en-tete #CHROM du VCF.")
+  stop("Could not find the VCF #CHROM header line.")
 }
 
 vcf_header <- strsplit(
@@ -252,7 +251,7 @@ vcf_header <- strsplit(
 )[[1]]
 
 if (length(vcf_header) < 10) {
-  stop("Le VCF ne semble pas contenir de colonnes individuelles.")
+  stop("The VCF does not appear to contain individual sample columns.")
 }
 
 vcf_samples <- vcf_header[10:length(vcf_header)]
@@ -261,11 +260,11 @@ n_samples <- length(vcf_samples)
 cat("\n========================================\n")
 cat("VCF\n")
 cat("========================================\n")
-cat("Nombre d'individus dans le VCF :", n_samples, "\n")
+cat("Number of individuals in the VCF:", n_samples, "\n")
 
 
 # ------------------------------------------------------------
-# 8. Associer les echantillons aux populations
+# 8. Match samples to populations
 # ------------------------------------------------------------
 
 missing_metadata <- setdiff(
@@ -275,7 +274,7 @@ missing_metadata <- setdiff(
 
 if (length(missing_metadata) > 0) {
   stop(
-    "Individus du VCF absents des metadonnees :\n",
+    "VCF individuals missing from the metadata:\n",
     paste(missing_metadata, collapse = ", ")
   )
 }
@@ -296,13 +295,13 @@ if (anyNA(origin_for_sample)) {
   )
 
   stop(
-    "Origine non trouvee pour les populations : ",
+    "Origin not found for the following populations: ",
     paste(missing_origins, collapse = ", ")
   )
 }
 
 cat(
-  "Nombre de populations dans les echantillons : ",
+  "Number of populations represented in the samples: ",
   length(unique(population_for_sample)),
   "\n",
   sep = ""
@@ -310,12 +309,12 @@ cat(
 
 
 # ------------------------------------------------------------
-# 9. Creer la matrice de genotypes
+# 9. Build the genotype dosage matrix
 #
-# 0/0 = dosage ALT 0
-# 0/1 ou 1/0 = dosage ALT 1
-# 1/1 = dosage ALT 2
-# Autres genotypes = manquants
+# 0/0 = ALT dosage 0
+# 0/1 or 1/0 = ALT dosage 1
+# 1/1 = ALT dosage 2
+# Other genotypes = missing
 # ------------------------------------------------------------
 
 dosage_matrix <- matrix(
@@ -328,17 +327,17 @@ dosage_matrix <- matrix(
 matched_ids <- logical(length(common_ids))
 chunk_size <- 20000L
 
-cat("\nLecture du VCF par blocs...\n")
+cat("\nReading the VCF in chunks...\n")
 
 con <- gzfile(vcf_file, open = "rt")
 
-# Passer les lignes de metadonnees du VCF jusqu'a #CHROM.
+# Skip VCF metadata lines until the #CHROM header.
 repeat {
   line <- readLines(con, n = 1, warn = FALSE)
 
   if (length(line) == 0) {
     close(con)
-    stop("Fin du VCF avant la ligne #CHROM.")
+    stop("End of VCF reached before the #CHROM header.")
   }
 
   if (startsWith(line, "#CHROM")) {
@@ -361,7 +360,7 @@ repeat {
     break
   }
 
-  # En principe, les blocs apres #CHROM contiennent les variants.
+  # Lines after #CHROM should normally contain variants.
   data_lines <- lines[
     !startsWith(lines, "#")
   ]
@@ -372,7 +371,7 @@ repeat {
 
   n_variants_read <- n_variants_read + length(data_lines)
 
-  # Extraire rapidement la troisieme colonne (ID).
+  # Quickly extract the third column (variant ID).
   ids <- sub(
     "^(?:[^\\t]*\\t){2}([^\\t]*).*$",
     "\\1",
@@ -405,17 +404,17 @@ repeat {
       next
     }
 
-    # Colonnes individuelles du VCF
+    # Individual sample columns in the VCF.
     sample_fields <- fields[10:(9 + n_samples)]
 
-    # Extraire GT avant les eventuels champs DP, GQ, etc.
+    # Extract GT before any additional fields such as DP or GQ.
     gt <- sub(
       ":.*$",
       "",
       sample_fields
     )
 
-    # Normaliser les separateurs diploides phasing/non-phasing
+    # Normalize phased and unphased diploid genotype separators.
     gt <- gsub(
       "\\|",
       "/",
@@ -435,8 +434,8 @@ repeat {
 
   if (n_variants_read %% 200000L < chunk_size) {
     cat(
-      "Variants lus :", n_variants_read,
-      "| SNP communs trouves :", sum(matched_ids),
+      "Variants read:", n_variants_read,
+      "| Common SNPs found:", sum(matched_ids),
       "\n"
     )
   }
@@ -444,26 +443,26 @@ repeat {
 
 close(con)
 
-cat("\nLecture du VCF terminee.\n")
-cat("Variants lus :", n_variants_read, "\n")
-cat("SNP communs retrouves :", sum(matched_ids), "\n")
-cat("SNP communs demandes :", length(common_ids), "\n")
+cat("\nVCF reading completed.\n")
+cat("Variants read:", n_variants_read, "\n")
+cat("Common SNPs found:", sum(matched_ids), "\n")
+cat("Common SNPs requested:", length(common_ids), "\n")
 
 if (sum(matched_ids) == 0) {
   stop(
-    "Aucun SNP commun n'a ete retrouve dans le VCF. ",
-    "Verifier les identifiants de SNP."
+    "No common SNPs were found in the VCF. ",
+    "Please check the SNP identifiers."
   )
 }
 
 if (sum(!matched_ids) > 0) {
   warning(
     sum(!matched_ids),
-    " SNP de la liste n'ont pas ete retrouves dans le VCF."
+    " SNPs from the list were not found in the VCF."
   )
 }
 
-# Garder uniquement les SNP retrouves dans le VCF.
+# Keep only SNPs found in the VCF.
 dosage_matrix <- dosage_matrix[
   ,
   matched_ids,
@@ -471,7 +470,7 @@ dosage_matrix <- dosage_matrix[
 ]
 
 cat(
-  "SNP effectivement utilises : ",
+  "SNPs actually used: ",
   ncol(dosage_matrix),
   "\n",
   sep = ""
@@ -479,22 +478,22 @@ cat(
 
 
 # ------------------------------------------------------------
-# 10. Calculer la divergence individuelle
+# 10. Calculate individual nucleotide divergence
 #
-# A chaque SNP :
-#   p_i = dosage ALT de l'individu / 2
+# At each SNP:
+#   p_i = ALT dosage of individual i / 2
 #
-# Pour un individu i et ses pairs j, la divergence attendue
-# entre deux alleles tires aleatoirement est :
+# For individual i and its peers j, the expected divergence
+# between two randomly sampled alleles is:
 #
 #   d_ij = p_i * (1 - p_j) + (1 - p_i) * p_j
 #
-# A chaque locus, on calcule la moyenne envers les autres
-# individus non manquants de la population, en excluant i.
+# At each locus, calculate the mean divergence from the other
+# non-missing individuals in the same population, excluding i.
 #
-# L'indice individuel final est la moyenne de ces divergences
-# par locus. Les loci sans au moins deux genotypes valides
-# dans la population ne contribuent pas au calcul.
+# The final individual index is the mean of these divergences
+# across loci. Loci with fewer than two valid genotypes in the
+# population are excluded from the calculation.
 # ------------------------------------------------------------
 
 individual_total <- numeric(n_samples)
@@ -504,7 +503,7 @@ populations <- unique(population_for_sample)
 n_loci <- ncol(dosage_matrix)
 
 cat("\n========================================\n")
-cat("CALCUL DE LA DIVERGENCE INDIVIDUELLE\n")
+cat("INDIVIDUAL DIVERGENCE CALCULATION\n")
 cat("========================================\n")
 
 for (pop in populations) {
@@ -516,14 +515,14 @@ for (pop in populations) {
   if (length(sample_indices) < 2) {
     warning(
       "Population ", pop,
-      " avec moins de deux individus : ignoree."
+      " has fewer than two individuals and will be skipped."
     )
     next
   }
 
   cat(
-    "Population :", pop,
-    "| individus :", length(sample_indices),
+    "Population:", pop,
+    "| Individuals:", length(sample_indices),
     "\n"
   )
 
@@ -540,20 +539,20 @@ for (pop in populations) {
     valid_local <- which(!is.na(g))
     n_valid <- length(valid_local)
 
-    # Un individu doit pouvoir etre compare a au moins
-    # un autre individu au locus.
+    # Each individual must be comparable to at least
+    # one other individual at this locus.
     if (n_valid < 2) {
       next
     }
 
-    # Frequence allelique ALT portee par chaque individu
+    # ALT allele frequency carried by each individual.
     p <- g[valid_local] / 2
 
     sum_p <- sum(p)
 
-    # Somme des divergences envers tous les individus valides,
-    # y compris soi-meme, puis retrait de la comparaison avec
-    # soi-meme et division par le nombre de pairs valides.
+    # Sum divergences against all valid individuals,
+    # including self, then remove the self-comparison
+    # and divide by the number of other valid individuals.
     divergence_sum <- (
       p * (n_valid - sum_p) +
         (1 - p) * sum_p -
@@ -574,7 +573,7 @@ for (pop in populations) {
 
 
 # ------------------------------------------------------------
-# 11. Tableau par individu
+# 11. Create the individual-level table
 # ------------------------------------------------------------
 
 individual_pi <- ifelse(
@@ -599,7 +598,7 @@ individual_results <- tibble(
 
 if (all(is.na(individual_results$Pi_individual))) {
   stop(
-    "Le calcul n'a produit aucune valeur individuelle valide."
+    "The calculation did not produce any valid individual values."
   )
 }
 
@@ -609,11 +608,11 @@ write_tsv(
   individual_file
 )
 
-cat("\nTableau individuel cree :\n")
+cat("\nIndividual-level table created:\n")
 cat(" - ", individual_file, "\n", sep = "")
 
 cat(
-  "Individus avec une valeur valide : ",
+  "Individuals with a valid value: ",
   sum(!is.na(individual_results$Pi_individual)),
   " / ",
   nrow(individual_results),
@@ -623,10 +622,10 @@ cat(
 
 
 # ------------------------------------------------------------
-# 12. Calculer la mediane par population
+# 12. Calculate the median for each population
 #
-# La mediane est calculee entre les indices individuels
-# des individus de chaque population.
+# The median is calculated across individual indices
+# for all individuals within each population.
 # ------------------------------------------------------------
 
 population_medians <- individual_results %>%
@@ -664,18 +663,18 @@ write_tsv(
   median_file
 )
 
-cat("\nMediane par population :\n")
+cat("\nPopulation medians:\n")
 print(population_medians)
 
-cat("\nTableau des medianes cree :\n")
+cat("\nPopulation median table created:\n")
 cat(" - ", median_file, "\n", sep = "")
 
 
 # ------------------------------------------------------------
-# 13. Ordonner les populations selon leur mediane individuelle
+# 13. Order populations by individual-level median
 #
-# Native d'abord, puis Invasive.
-# L'ordre au sein de chaque groupe est croissant.
+# Native populations first, followed by Invasive populations.
+# Within each group, populations are sorted in ascending order.
 # ------------------------------------------------------------
 
 population_order <- population_medians %>%
@@ -704,7 +703,7 @@ n_native <- sum(
   population_medians$Origin == "Native"
 )
 
-cat("\nOrdre des populations sur la figure :\n")
+cat("\nPopulation order in the figure:\n")
 print(
   population_medians %>%
     arrange(
@@ -715,15 +714,15 @@ print(
 
 
 # ------------------------------------------------------------
-# 14. Boxplot des valeurs individuelles par population
+# 14. Boxplot of individual values by population
 #
-# Une boite par population :
-#   - ligne centrale : mediane des indices individuels
-#   - boite : intervalle interquartile
-#   - moustaches : regle standard du boxplot
+# One box per population:
+#   - central line: median of individual indices
+#   - box: interquartile range
+#   - whiskers: standard boxplot rule
 #
-# Pas de points individuels superposes.
-# Pas de symbole de moyenne.
+# Individual points are not overlaid.
+# No mean symbol is displayed.
 # ------------------------------------------------------------
 
 host_colors <- c(
@@ -828,7 +827,7 @@ p_individual <- ggplot(
 
 
 # ------------------------------------------------------------
-# 15. Exporter SVG et PDF
+# 15. Export SVG and PDF figures
 # ------------------------------------------------------------
 
 ggsave(
@@ -849,21 +848,22 @@ ggsave(
 
 
 # ------------------------------------------------------------
-# 16. Bilan final
+# 16. Final summary
 # ------------------------------------------------------------
 
 cat("\n========================================\n")
-cat("CALCUL TERMINE\n")
+cat("CALCULATION COMPLETED\n")
 cat("========================================\n")
 
-cat("\nTableau par individu :\n")
+cat("\nIndividual-level table:\n")
 cat(" - ", individual_file, "\n", sep = "")
 
-cat("\nMediane par population :\n")
+cat("\nPopulation median table:\n")
 cat(" - ", median_file, "\n", sep = "")
 
-cat("\nBoxplot :\n")
+cat("\nBoxplots:\n")
 cat(" - ", plot_svg, "\n", sep = "")
 cat(" - ", plot_pdf, "\n", sep = "")
 
-cat("\nTermine sans erreur.\n")
+cat("\nFinished without errors.\n")
+
