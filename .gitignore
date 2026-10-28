@@ -1,0 +1,17 @@
+# Resultats de calcul
+Stacks/
+*.bam
+*.bai
+*.vcf
+*.vcf.gz
+*.tbi
+*.csi
+*.bed
+*.bim
+*.fam
+
+# Journaux et fichiers temporaires
+*.out
+*.err
+*.log
+*.before_*
